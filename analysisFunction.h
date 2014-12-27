@@ -1,14 +1,19 @@
-
+#pragma once
 #include <cmath>
 #include <vector>
 #include <zlib.h>
+#include <cstdio>
 template<typename T>
 struct Matrix {
-  size_t x;
-  size_t y;
-  T **matrix;
+  size_t dx;
+  size_t dy;
+  size_t mx;
+  size_t my;
+  T **d;
 };
 
+Matrix<double> *initMatrix(size_t x,size_t y);
+void kill(Matrix<double> *rr);
 double getMax(double a,double b, double c);
 double addProtect2(double a,double b);
 double addProtect3(double a,double b, double c);
@@ -21,7 +26,9 @@ double sigm(double x);
 void swapDouble (double& first, double& second);
 int matinv( double x[], int n, int m, double space[]);
 void deleteMatrix(Matrix<double> mat);
-void printMatrix(Matrix<double> mat,FILE *file);
+void print(Matrix<double> *mat,FILE *file);
+void print(char *ary,size_t l,FILE *file,char*);
+void print(double *ary,size_t l,FILE *file,char*);
 void logrescale(double *ary,int len);
 void svd_inverse(double mat[],int xLen, int yLen);
 std::vector<char*> getFilenames(const char * name,int nInd);
@@ -70,3 +77,4 @@ int isNewer(const char *newer,const char *older);
 
 
 
+double sum(double*,size_t l,int doLog);

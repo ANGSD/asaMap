@@ -1,11 +1,10 @@
-FLAGS=-O3 -D_USE_KNETFILE
+FLAGS=-O3 
 
 
 CFLAGS += $(FLAGS)
 CXXFLAGS += $(FLAGS)
 
-PRG=line
-
+PRG=asaMap
 
 all: $(PRG)
 
@@ -25,8 +24,8 @@ OBJ = $(CSRC:.c=.o) $(CXXSRC:.cpp=.o)
 	$(CXX) -MM $(CXXFLAGS) $*.cpp >$*.d
 
 
-line: $(OBJ)
-	$(CXX) $(FLAGS)  -o line *.o -lz -lpthread
+asaMap: $(OBJ)
+	$(CXX) $(FLAGS)  -o asaMap *.o -lz -lpthread
 
 clean:
-	rm  -f *.o *.d line *~
+	rm  -f *.o *.d asaMap *~

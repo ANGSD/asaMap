@@ -13,7 +13,24 @@
 
 #define LENS 4096
 
+Matrix<double> *initMatrix(size_t x,size_t y){
+  Matrix<double> *r = new Matrix<double>;
+  r->d = new double*[x];
+  for(size_t i=0;i<x;i++)
+    r->d[i] = new double[y];
+  r->mx=x;
+  r->my=y;
+  r->dx=r->dy =0;
+  return r;
+}
 
+void kill(Matrix<double> *rr){
+  for(size_t i=0;i<rr->mx;i++)
+    delete [] rr->d[i];
+  delete [] rr->d;
+  delete rr;
+  rr=NULL;
+}
 double addProtect2(double a,double b){
   //function does: log(exp(a)+exp(b)) while protecting for underflow
   double maxVal;// = std::max(a,b));
@@ -58,6 +75,9 @@ double getMax(double a,double b, double c){
 
 
 std::vector<double> getArray(const char *name){
+  std::vector<double> ret;
+  if(name==NULL)
+    return ret;
  if(!fexists(name)){
     fprintf(stderr,"\t-> Problems opening file: %s\n",name);
     exit(0);
@@ -69,7 +89,7 @@ std::vector<double> getArray(const char *name){
     fprintf(stderr,"Problem opening file: \'%s\'",name);
     exit(0);
   }
-  std::vector<double> ret;
+
   while(gzgets(gz,buffer,LENS)){
     char *tok = strtok(buffer,delims);
     while(tok!=NULL){
@@ -125,33 +145,50 @@ Matrix<double> getMatrix(const char *name){
     data[i++]  = *it;
   
   Matrix<double> retMat;
-  retMat.matrix=data;
-  retMat.x = rows.size();
-  retMat.y = ncols;
-  fprintf(stderr,"Done reading file: \'%s\' containing nrows:%lu and ncols:%lu\n",name,retMat.x,retMat.y);
+  retMat.d=data;
+  retMat.dx =retMat.mx = rows.size();
+  retMat.dy =retMat.my =  ncols;
+  fprintf(stderr,"Done reading file: \'%s\' containing nrows:%lu and ncols:%lu\n",name,retMat.dx,retMat.dy);
   gzclose(gz);
+  //  assert(retMat.dx>1&&retMat.dy>1);
   return retMat;
 
 }
 
 void deleteMatrix(Matrix<double> mat){
-  assert(mat.matrix!=NULL);
-  for(int i=0;i<mat.x;i++)
-    delete [] mat.matrix[i];
-  delete[] mat.matrix;
-  mat.matrix =NULL;
+  assert(mat.d!=NULL);
+  for(int i=0;i<mat.dx;i++)
+    delete [] mat.d[i];
+  delete[] mat.d;
+  mat.d =NULL;
 }
 
 
-void printMatrix(Matrix<double> mat,FILE *file){
-  fprintf(stderr,"Printing mat:%p with dim=(%lu,%lu)\n",mat.matrix,mat.x,mat.y);
-  for(int xi=0;xi<mat.x;xi++){
-    for(int yi=0;yi<mat.y;yi++)
-      fprintf(file,"%f\t",mat.matrix[xi][yi]);
+void print(Matrix<double> *mat,FILE *file){
+  fprintf(stderr,"Printing mat:%p with dim=(%lu,%lu)\n",mat->d,mat->dx,mat->dy);
+  for(int xi=0;xi<mat->dx;xi++){
+    for(int yi=0;yi<mat->dy;yi++)
+      fprintf(file,"%f\t",mat->d[xi][yi]);
     fprintf(file,"\n");
   }    
 }
 
+void print(char *ary,size_t l,FILE *file,char *he){
+  fprintf(stderr,"%s\n",he);
+  for(int i=0;i<l;i++)
+    fprintf(stderr,"%d ",ary[i]);
+  fprintf(stderr,"\n");
+  
+}
+
+void print(double *ary,size_t l,FILE *file,char *he){
+  if(he!=NULL)
+    fprintf(stderr,"%s\n",he);
+  for(int i=0;i<l;i++)
+    fprintf(stderr,"%f ",ary[i]);
+  fprintf(stderr,"\n");
+  
+}
 void swapDouble (double& first, double& second)
 {
         double temp = first;
@@ -546,3 +583,14 @@ int isNewer(const char *newer,const char *older){
   return one.st_mtime>=two.st_mtime;
 }
 
+
+double sum(double *a,size_t b,int doLog){
+  assert(b>0);
+  double r = 0;
+  for(size_t i=0;i<b;i++)
+    if(doLog==0)
+      r +=a[i];
+    else
+      r +=log(a[i]);
+  return r;
+}

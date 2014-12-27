@@ -2,8 +2,122 @@
 #include "readplink.c"
 #include "anal.h"
 #include "anders.h"
-void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<double> &ad, const std::vector<double> &sex,const std::vector<double> &freq){
-  //  fprintf(stderr,"\t-> plinkdim: x->%lu y->%lu\n",plnk->x,plnk->y);
+#include "analysisFunction.h"
+
+void kill_pars(pars *p,size_t l){
+  delete [] p->gs;
+  delete [] p->ys;
+  delete [] p->qvec;
+  
+  kill(p->covs);
+  kill(p->design);
+  kill(p->ysCgs);
+
+  delete [] p->pheno;
+  delete [] p->p_sCg;
+  delete [] p->start;
+  delete [] p->start0;
+  free(p->bufstr.s);free(p->tmpstr.s);
+  delete p;
+  p=NULL;
+}
+
+
+
+pars *init_pars(size_t l,size_t ncov,int model,int maxInter,double tole){
+  pars *p=new pars;
+  p->len=l;
+  p->ncov=ncov;
+  p->gs=new char[l];
+  p->ys=new double[l];
+  p->qvec=new double[l];
+  //p->mafs=new double[l];
+  p->covs=initMatrix(l,ncov);
+  p->design=initMatrix(4*l,ncov+2);
+  p->pheno = new double[4*l];
+  p->p_sCg = new double[4*l];
+  p->bufstr.s=NULL;p->bufstr.l=p->bufstr.m=0;
+  p->tmpstr.s=NULL;p->tmpstr.l=p->tmpstr.m=0;
+  
+  ksprintf(&p->bufstr,"Chromo\tPosition\tnInd:llh(M1)\tllh(M2)\tllh(M2)\tllh(M3)\tllh(M4)\tllh(M5):coef(M1):coef(M2):coef(M3):coef(M4):coef(M5)\n");
+  
+  //branch
+  p->model =model;
+  p->start = new double[l];
+  p->start0 = new double[l];
+  p->ysCgs = initMatrix(l,ncov+2+4);//now we are just allocating enough enough
+  p->maxIter = maxInter;
+  p->tol = tole;
+
+  return p;
+}
+
+double sd(double *a,int l){
+  double ts =0;
+  for(int i=0;i<l;i++)
+    ts += a[i];
+
+  double u = ts/(1.0*l);
+  assert(u!=0);
+  ts =0;
+  for(int i=0;i<l;i++)
+    ts += (a[i]-u)*(a[i]-u);
+  return ts/(1.0*(l-1.0));
+}
+
+double rstart(double *ary,size_t l){
+  for(int i=0;i<l;i++){
+   ary[i] = drand48()*2-1;
+   //  fprintf(stderr,"ary[%d]:%f\n",i,ary[i]);
+  }
+  ary[l]=sd(ary,l);
+  
+
+}
+
+
+void set_pars(pars*p,char *g,const std::vector<double> &phe,const std::vector<double> &ad , double *freq,std::vector<double> start,Matrix<double> &cov,char *site){
+
+  p->len=0;
+  for(int i=0;i<phe.size();i++){
+      if(g[i]!=3){
+      p->gs[p->len] = 2-g[i];//DRAGON 
+      p->ys[p->len] = phe[i];
+
+      p->qvec[p->len] = ad[i];
+      for(int c=0;c<cov.dy;c++)
+	p->covs->d[p->len][c] = cov.d[i][c]; 
+      p->len++;
+    }
+  }
+  
+  p->covs->dx=p->len;
+  p->covs->dy=cov.dy;
+  p->mafs = freq;
+  
+  for(int i=0;i<p->len;i++){
+    for(int j=0;j<4;j++){
+      p->pheno[i*4+j] = p->ys[i];
+      p->p_sCg[i*4+j] = NAN;
+    }
+
+  }
+
+  for(int i=0;i<start.size();i++)
+    p->start[i]= start[i];
+
+  if(start.size()==0){
+    //make better start position
+    rstart(p->start,p->covs->dy+2);//<-will put sd at p->start[p->covs+dy+2]
+  }
+ 
+  memcpy(p->start0,p->start,sizeof(double)*(p->covs->dy+3));
+  ksprintf(&p->bufstr,"%s%d:",site,p->len);
+}
+
+
+void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<double> &ad,Matrix<double> &freq,int model,std::vector<double> start,Matrix<double> &cov,int maxIter,double tol,std::vector<char*> &loci,int nThreads){
+  //fprintf(stderr,"\t-> plinkdim: x->%lu y->%lu\n",plnk->x,plnk->y);
   //return ;
   char **d = new char*[plnk->y];//transposed of plink->d. Not sure what is best, if we filterout nonmissing anyway.
   for(int i=0;i<plnk->y;i++){
@@ -12,17 +126,15 @@ void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<dou
       d[i][j]=plnk->d[j][i];
   }
 
-  double **res=new double *[plnk->y];
   
-  pars *p=init_pars(plnk->x,10);//we prep for threading. By using encapsulating all data need for a site in  struct called pars
+  
+  pars *p=init_pars(plnk->x,cov.dy,model,maxIter,tol);//we prep for threading. By using encapsulating all data need for a site in  struct called pars
 
   for(int y=0;y<plnk->y;y++){//loop over sites
+    fprintf(stderr,"Parsing site:%d\n",y);
     int cats[4] = {0,0,0,0};
     int cats2[4] = {0,0,0,0};
-    res[y]=new double[47];
-    for(int i=0;i<47;i++)
-      res[y][i] = NAN; //<- didn't know this...
-    
+        
     for(int x=0;x<plnk->x;x++)
       cats[plnk->d[x][y]]++;
     for(int x=0;x<plnk->x;x++)//similar to above but with transposed plink matrix
@@ -32,99 +144,67 @@ void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<dou
     //    fprintf(stdout,"[%d] %d %d %d %d freq:%f ",y,cats[0],cats[1],cats[2],cats[3],freq[y]);
     // fprintf(stdout,"[%d] %d %d %d %d freq:%f\n",y,cats2[0],cats2[1],cats2[2],cats2[3],freq[y]);
 #endif
-    
+  
     //discard sites if missingness > 0.1
     if(cats[3]/(double)(cats[0]+cats[1],cats[2])>0.1){
-      //fprintf(stderr,"skipping site[%d] due to excess missingness\n",y);
-      res[y][0] = 1;
+      fprintf(stderr,"skipping site[%d] due to excess missingness\n",y);
       continue;
     }
-    
     //check that we observe atleast 10 obs of 2 different genotypes
     int n=0;
     for(int i=0;i<4;i++)
-      if(cats[i]>10)
+      if(cats[i]>1)
 	n++;
     if(n<2){
-      //fprintf(stderr,"skipping site[%d] due to categories filter\n",y);
-      res[y][0]=2;
+      fprintf(stderr,"skipping site[%d] due to categories filter\n",y);
       continue;
     }
-    //plug in freq
-    res[y][1]=freq[y];res[y][2]=1-freq[y];
-
-    if(freq[y]>0.999||freq[y]<0.001){
-      //fprintf(stderr,"skipping site[%d] due to maf filter\n",y);
-      res[y][0]=3;
-      continue;
-      
-    }
-    //set the pars, including the result vector
-    set_pars(p,d[y],phe,ad,sex,freq);
-    p->res=res[y];
-    //find fit.
-    getfit(p);
-
-    //print it
-    for(int i=0;i<47;i++)
-      fprintf(stderr,"%f\t",res[y][i]);
-    fprintf(stderr,"\n");
+ 
     
+    if(freq.d[y][0]>0.999||freq.d[y][0]<0.001){
+      fprintf(stderr,"skipping site[%d] due to maf filter\n",y);
+      continue;
+    }
+
+    set_pars(p,d[y],phe,ad,freq.d[y],start,cov,loci[y]);
+        
+    main_anal((void*)p);
+    fprintf(stdout,"%s:%s\n",p->bufstr.s,p->tmpstr.s);
+    p->bufstr.l=p->tmpstr.l=0;
+
   }
   fprintf(stderr,"\t-> done\n");
   kill_pars(p,plnk->x);
-  for(int i=0;i<plnk->y;i++)
-    delete [] res[i];
 
-  delete [] res;
   for(int i=0;i<plnk->y;i++)
     delete [] d[i];
   delete [] d;
-  
-
 }
 
-pars *init_pars(int l,int ncov){
-  pars *p=new pars;
-  p->len=l;
-  p->ncov=ncov;
-  p->gs=new char[l];
-  p->ys=new double[l];
-  p->qvec=new double[l];
-  p->mafs=new double[l];
-  p->covs=new double*[l];
-  p->sex=new double[l];
-  for(int i=0;i<l;i++)
-    p->covs[i]=new double[p->ncov];
-
-  return p;
-}
-
-void kill_pars(pars *p,int l){
-  delete [] p->gs;
-  delete [] p->ys;
-  delete [] p->qvec;
-  delete [] p->mafs;
-  delete [] p->sex;
-  for(int i=0;i<l;i++)
-    delete [] p->covs[i];
-  delete [] p->covs;
-  delete p;
-  p=NULL;
-}
-
-
-void set_pars(pars*p,char *g,const std::vector<double> &phe,const std::vector<double> &ad, const std::vector<double> &sex,const std::vector<double> &freq){
-  p->len=0;
-  for(int i=0;i<phe.size();i++){
-    if(g[i]!=3){
-      p->gs[p->len] = g[i];
-      p->ys[p->len] = phe[i];
-      p->qvec[p->len] = ad[i];
-      p->sex[p->len] = sex[i];
-      p->mafs[p->len] = freq[i];
-      p->len++;
-    }
+void print(pars *p,FILE *fp){
+  fprintf(fp,"\n-------------\n");
+  fprintf(fp,"\n len=%d:\n",p->len);
+  for(int i=0;i<p->len;i++)
+    fprintf(fp,"%d ",p->gs[i]);
+  fprintf(fp,"\ny:\n");
+  for(int i=0;i< p->len;i++)
+    fprintf(fp,"%f ",p->ys[i]);
+  fprintf(fp,"\ndesign:\n");
+  for(int i=0;i< p->len;i++){
+    for(int c=0;c< p->ncov;c++) 
+      fprintf(fp,"%f\t",p->covs->d[i][c]);
+    fprintf(fp,"\n");
   }
-  
+  fprintf(fp,"\nQ:\n");
+  for(int i=0;i< p->len;i++)
+    fprintf(fp,"%f\t",p->qvec[i]);
+  fprintf(fp,"\n");
+
+  fprintf(fp,"maf:\t%f\t%f\n",p->mafs[0],p->mafs[1]);
+  fprintf(fp,"-------------\n");
+  fprintf(stderr,"start:\n");
+  for(int i=0;i<=p->design->dy;i++)
+    fprintf(stderr,"%f ",p->start[i]);
+  fprintf(stderr,"\n");
 }
+
