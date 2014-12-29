@@ -172,7 +172,7 @@ int main(int argc,char **argv){
   for(int i=0;i<f.dx;i++)
     delete [] f.d[i];
   delete [] f.d;
-  double r;
+ 
   for(uint i=0;i<loci.size();i++)
     free(loci[i]);
   return 0;

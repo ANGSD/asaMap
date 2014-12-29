@@ -65,7 +65,7 @@ double sd(double *a,int l){
   return ts/(1.0*(l-1.0));
 }
 
-double rstart(double *ary,size_t l){
+void rstart(double *ary,size_t l){
   for(int i=0;i<l;i++){
    ary[i] = drand48()*2-1;
    //  fprintf(stderr,"ary[%d]:%f\n",i,ary[i]);
@@ -132,28 +132,24 @@ void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<dou
 
   for(int y=0;y<plnk->y;y++){//loop over sites
     fprintf(stderr,"Parsing site:%d\n",y);
-    int cats[4] = {0,0,0,0};
     int cats2[4] = {0,0,0,0};
-        
-    for(int x=0;x<plnk->x;x++)
-      cats[plnk->d[x][y]]++;
+   
     for(int x=0;x<plnk->x;x++)//similar to above but with transposed plink matrix
       cats2[d[y][x]]++;
-#if 0
+#if 1
     //print table
-    //    fprintf(stdout,"[%d] %d %d %d %d freq:%f ",y,cats[0],cats[1],cats[2],cats[3],freq[y]);
-    // fprintf(stdout,"[%d] %d %d %d %d freq:%f\n",y,cats2[0],cats2[1],cats2[2],cats2[3],freq[y]);
+    fprintf(stdout,"[%d] %d %d %d %d ",y,cats2[0],cats2[1],cats2[2],cats2[3]);
 #endif
   
     //discard sites if missingness > 0.1
-    if(cats[3]/(double)(cats[0]+cats[1],cats[2])>0.1){
+    if((cats2[3]/(double)(cats2[0]+cats2[1]+cats2[2]))>0.1){
       fprintf(stderr,"skipping site[%d] due to excess missingness\n",y);
       continue;
     }
     //check that we observe atleast 10 obs of 2 different genotypes
     int n=0;
     for(int i=0;i<4;i++)
-      if(cats[i]>1)
+      if(cats2[i]>1)
 	n++;
     if(n<2){
       fprintf(stderr,"skipping site[%d] due to categories filter\n",y);
