@@ -24,7 +24,7 @@ void kill_pars(pars *p,size_t l){
 
 
 
-pars *init_pars(size_t l,size_t ncov,int model,int maxInter,double tole){
+pars *init_pars(size_t l,size_t ncov,int model,int maxInter,double tole,std::vector<double> &start){
   pars *p=new pars;
   p->len=l;
   p->ncov=ncov;
@@ -49,6 +49,16 @@ pars *init_pars(size_t l,size_t ncov,int model,int maxInter,double tole){
   p->maxIter = maxInter;
   p->tol = tole;
 
+  //plugin a start
+  for(int i=0;i<start.size();i++)
+    p->start[i]= start[i];
+  if(start.size()==0){
+    //make better start guess at some point
+    void rstart(double *,size_t);
+    rstart(p->start,ncov+2);//<-will put sd at p->start[p->covs+dy+2]
+  }
+  //copy it to the start0 which will be copied to start for each new site
+  memcpy(p->start0,p->start,sizeof(double)*(ncov+3));
   return p;
 }
 
@@ -71,8 +81,6 @@ void rstart(double *ary,size_t l){
    //  fprintf(stderr,"ary[%d]:%f\n",i,ary[i]);
   }
   ary[l]=sd(ary,l);
-  
-
 }
 
 
@@ -103,15 +111,7 @@ void set_pars(pars*p,char *g,const std::vector<double> &phe,const std::vector<do
 
   }
 
-  for(int i=0;i<start.size();i++)
-    p->start[i]= start[i];
-
-  if(start.size()==0){
-    //make better start position
-    rstart(p->start,p->covs->dy+2);//<-will put sd at p->start[p->covs+dy+2]
-  }
- 
-  memcpy(p->start0,p->start,sizeof(double)*(p->covs->dy+3));
+  memcpy(p->start,p->start0,sizeof(double)*(p->covs->dy+3));
   ksprintf(&p->bufstr,"%s%d:",site,p->len);
 }
 
@@ -125,18 +125,16 @@ void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<dou
     for(int j=0;j<plnk->x;j++)
       d[i][j]=plnk->d[j][i];
   }
-
   
-  
-  pars *p=init_pars(plnk->x,cov.dy,model,maxIter,tol);//we prep for threading. By using encapsulating all data need for a site in  struct called pars
+  pars *p=init_pars(plnk->x,cov.dy,model,maxIter,tol,start);//we prep for threading. By using encapsulating all data need for a site in  struct called pars
 
   for(int y=0;y<plnk->y;y++){//loop over sites
-    fprintf(stderr,"Parsing site:%d\n",y);
+    //    fprintf(stderr,"Parsing site:%d\n",y);
     int cats2[4] = {0,0,0,0};
    
     for(int x=0;x<plnk->x;x++)//similar to above but with transposed plink matrix
       cats2[d[y][x]]++;
-#if 1
+#if 0
     //print table
     fprintf(stdout,"[%d] %d %d %d %d ",y,cats2[0],cats2[1],cats2[2],cats2[3]);
 #endif
@@ -163,10 +161,11 @@ void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<dou
     }
 
     set_pars(p,d[y],phe,ad,freq.d[y],start,cov,loci[y]);
-        
+
     main_anal((void*)p);
     fprintf(stdout,"%s:%s\n",p->bufstr.s,p->tmpstr.s);
     p->bufstr.l=p->tmpstr.l=0;
+    //break;
 
   }
   fprintf(stderr,"\t-> done\n");
