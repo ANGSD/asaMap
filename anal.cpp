@@ -1,7 +1,7 @@
 #include <cmath>
 #include "readplink.c"
 #include "anal.h"
-#include "anders.h"
+#include "asaMap.h"
 #include "analysisFunction.h"
 
 void kill_pars(pars *p,size_t l){
@@ -39,7 +39,7 @@ pars *init_pars(size_t l,size_t ncov,int model,int maxInter,double tole,std::vec
   p->bufstr.s=NULL;p->bufstr.l=p->bufstr.m=0;
   p->tmpstr.s=NULL;p->tmpstr.l=p->tmpstr.m=0;
   
-  ksprintf(&p->bufstr,"Chromo\tPosition\tnInd:llh(M1)\tllh(M2)\tllh(M2)\tllh(M3)\tllh(M4)\tllh(M5):coef(M1):coef(M2):coef(M3):coef(M4):coef(M5)\n");
+  ksprintf(&p->bufstr,"Chromo\tPosition\tnInd\tf1\tf2\tllh(M1)\tllh(M2)\tllh(M3)\tllh(M4)\tllh(M5)\tb1(M1)\tb2(M1)\tb1(M2)\tb2(M3)\tb(M4)\n");
   
   //branch
   p->model =model;
@@ -112,11 +112,11 @@ void set_pars(pars*p,char *g,const std::vector<double> &phe,const std::vector<do
   }
 
   memcpy(p->start,p->start0,sizeof(double)*(p->covs->dy+3));
-  ksprintf(&p->bufstr,"%s%d:",site,p->len);
+  ksprintf(&p->bufstr,"%s%d\t%f\t%f\t",site,p->len,p->mafs[0],p->mafs[1]);
 }
 
 
-void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<double> &ad,Matrix<double> &freq,int model,std::vector<double> start,Matrix<double> &cov,int maxIter,double tol,std::vector<char*> &loci,int nThreads){
+void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<double> &ad,Matrix<double> &freq,int model,std::vector<double> start,Matrix<double> &cov,int maxIter,double tol,std::vector<char*> &loci,int nThreads,FILE *outFile){
   //fprintf(stderr,"\t-> plinkdim: x->%lu y->%lu\n",plnk->x,plnk->y);
   //return ;
   char **d = new char*[plnk->y];//transposed of plink->d. Not sure what is best, if we filterout nonmissing anyway.
@@ -129,7 +129,7 @@ void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<dou
   pars *p=init_pars(plnk->x,cov.dy,model,maxIter,tol,start);//we prep for threading. By using encapsulating all data need for a site in  struct called pars
 
   for(int y=0;y<plnk->y;y++){//loop over sites
-    //    fprintf(stderr,"Parsing site:%d\n",y);
+    fprintf(stderr,"Parsing site:%d\r",y);
     int cats2[4] = {0,0,0,0};
    
     for(int x=0;x<plnk->x;x++)//similar to above but with transposed plink matrix
@@ -155,15 +155,15 @@ void wrap(const plink *plnk,const std::vector<double> &phe,const std::vector<dou
     }
  
     
-    if(freq.d[y][0]>0.999||freq.d[y][0]<0.001){
-      fprintf(stderr,"skipping site[%d] due to maf filter\n",y);
-      continue;
-    }
+    //   if(freq.d[y][0]>0.999||freq.d[y][0]<0.001){
+    //  fprintf(stderr,"skipping site[%d] due to maf filter\n",y);
+    //  continue;
+    // }
 
     set_pars(p,d[y],phe,ad,freq.d[y],start,cov,loci[y]);
 
     main_anal((void*)p);
-    fprintf(stdout,"%s:%s\n",p->bufstr.s,p->tmpstr.s);
+    fprintf(outFile,"%s\t%s\n",p->bufstr.s,p->tmpstr.s);
     p->bufstr.l=p->tmpstr.l=0;
     //break;
 

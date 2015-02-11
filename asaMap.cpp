@@ -6,10 +6,10 @@
  #include "readplink.h"
  #include <cstring>
  #include <cfloat>
- #include "kstring.h"
+#include "kstring.h"
 
 
- void getFit(double *start,double *Y,double **covMatrix,double *weights, int nInd4,int nEnv,double *residuals,int df){
+void getFit(double *start,double *Y,double **covMatrix,double *weights, int nInd4,int nEnv,double *residuals,int df){
    //  fprintf(stderr,"%s: nInd4:%d nEnv:%d df:%d\n",__FUNCTION__,nInd4,nEnv,df);
 
    /*
@@ -140,35 +140,35 @@
 
 
  //pat[add/rec][x1/x2][X][g]
- char pat[2][2][4][3] = {
+char pat[2][2][4][3] = {
    {{{0,1,2},
-      {0,1,1},
-      {0,0,1},
-      {0,0,0}
-     },{
+   {0,1,1},
+   {0,0,1},
+   {0,0,0}
+       },{
        {0,0,0},
        {0,0,1},
        {0,1,1},
        {0,1,2}}
-   },
+      },
    {
      {{0,0,1},
-      {0,0,0},
-      {0,0,0},
-      {0,0,0}
-     },
+     {0,0,0},
+     {0,0,0},
+     {0,0,0}
+	},
      {{0,0,0},
-      {0,0,0},
-      {0,0,0},
-      {0,0,1}}
-   }
- };
+     {0,0,0},
+     {0,0,0},
+     {0,0,1}}
+       }
+     };
 
- double tnorm(double x,double mean,double sd){
-   double fac = 1.0/(sd*sqrt(2.0*M_PI));
-   double val = exp(-(((x-mean)*(x-mean))/(2*sd*sd)));
-   return fac*val;
- }
+double tnorm(double x,double mean,double sd){
+  double fac = 1.0/(sd*sqrt(2.0*M_PI));
+  double val = exp(-(((x-mean)*(x-mean))/(2*sd*sd)));
+  return fac*val;
+}
 
  double logLike(double *start,double* pheno,Matrix<double> *design,double *p_sCg){
    double ret = 0;
@@ -424,19 +424,26 @@ void rmPos(double *d,int at,int l){
     fprintf(stderr,"j[%d]:%f\n",i,d[i]);
   //      exit(0);
 }
-
-void printRes(pars *p){
+void printRes(pars *p,int nCol=-1,int printVar=0){
+  if(nCol==-1)
+    nCol=p->design->dy;
   ksprintf(&p->bufstr,"%f\t",logLikeP(p));
-  for(int i=0;i<p->design->dy;i++)
+  for(int i=0;i<nCol;i++)
     ksprintf(&p->tmpstr,"%f\t",p->start[i]);
-  ksprintf(&p->tmpstr,"%f:",p->start[p->design->dy]);
+  if(printVar)
+    ksprintf(&p->tmpstr,"%f\t",p->start[p->design->dy]); //variancen?
 }
-void printNan(pars *p){
+    
+void printNan(pars *p,int nCol=-1, int printVar=0){
+  if(nCol==-1)
+    int nCol=p->design->dy;
   ksprintf(&p->bufstr,"%f\t",NAN);
-  for(int i=0;i<p->design->dy;i++)
+  for(int i=0;i<nCol;i++)
     ksprintf(&p->tmpstr,"%f\t",NAN);
-  ksprintf(&p->tmpstr,"%f:",NAN);
+  if(printVar)
+    ksprintf(&p->tmpstr,"%f\t",NAN); //variancen?
 }
+
 
 void asamEM(pars *p){
 
@@ -453,10 +460,10 @@ void asamEM(pars *p){
   p_sCg(p);
   if(maf0 && maf1){
     controlEM(p);
-    printRes(p); 
+    printRes(p,2); 
   }
   else
-    printNan(p);
+    printNan(p,2);
 
   //////////// do M2 ///////////////
   //remove column2 and second value from start M2
@@ -467,10 +474,10 @@ void asamEM(pars *p){
   rmCol(p->design,1);
   if(maf0){
     controlEM(p);
-    printRes(p); 
+    printRes(p,1); 
   }
   else
-    printNan(p);
+    printNan(p,1);
   //////////// do M3 ///////////////
   //remove column1 and first value from start M3
   mkDesign(p);
@@ -481,10 +488,10 @@ void asamEM(pars *p){
 
   if(maf1){
     controlEM(p);
-    printRes(p); 
+    printRes(p,1); 
   }
   else
-    printNan(p);
+    printNan(p,1);
   
   //////////// do M4 ///////////////
   //cbind gs and covs into design M4:
@@ -510,7 +517,7 @@ void asamEM(pars *p){
   p->start[0]=p->start[1];
 
  //print to kbuf
-  printRes(p); 
+   printRes(p,1); 
 
   //////////// do M5 ///////////////
 
@@ -535,7 +542,7 @@ void asamEM(pars *p){
     p->start[i] = p->start[i-2];
   p->start[1]=  p->start[0]=0;
 
-  printRes(p); 
+  printRes(p,0); 
 
   
   //  fprintf(stdout,"%s:%s\n",p->bufstr.s,p->tmpstr.s);  
