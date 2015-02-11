@@ -141,7 +141,7 @@ int main(int argc,char **argv){
 
   srand48(seed);
 
-
+  FILE *outFile = fopen(outname, "w");
   plink *p=readplink(pname);  
   std::vector<char *> loci= readBim(pname);
   Matrix<double> cov =getMatrix(covname);
@@ -154,7 +154,7 @@ int main(int argc,char **argv){
   Matrix<double> f =getMatrix(freqname);
   std::vector<double> s =getArray(startname);
   assert(model==0||model==1);
-  wrap(p,pheno,adprop,f,model,s,cov,mIter,tol,loci,nThreads);
+  wrap(p,pheno,adprop,f,model,s,cov,mIter,tol,loci,nThreads,outFile);
 
   //cleanup
   kill_plink(p); 

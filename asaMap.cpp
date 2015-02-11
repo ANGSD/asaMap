@@ -1,7 +1,7 @@
  #include <cstdio>
  #include <cmath>
  #include <cassert>
- #include "anders.h"
+ #include "asaMap.h"
  #include "anal.h"
  #include "readplink.h"
  #include <cstring>
@@ -380,10 +380,10 @@
 
      if(1){//remove for tole check and direction check
        if(fabs(llh1-llh0)<p->tol){
-	 fprintf(stderr,"Converged \n");
+	 //	 fprintf(stderr,"Converged \n");
 	 break;
        }if(llh0<llh1){
-	 fprintf(stderr,"Fit caused increase in likelihood, will roll back to previous step\n");
+	 //	 fprintf(stderr,"Fit caused increase in likelihood, will roll back to previous step\n");
 	 memcpy(p->start,pars0,sizeof(double)*(p->design->dy+1));
 	 break;
        }
@@ -425,34 +425,53 @@ void rmPos(double *d,int at,int l){
   //      exit(0);
 }
 
-
-void asamEM(pars *p){
-  //doFull M1
-  mkDesign(p);
-  p_sCg(p);
-
-  controlEM(p);
-  //print res to kbuf
+void printRes(pars *p){
   ksprintf(&p->bufstr,"%f\t",logLikeP(p));
   for(int i=0;i<p->design->dy;i++)
     ksprintf(&p->tmpstr,"%f\t",p->start[i]);
   ksprintf(&p->tmpstr,"%f:",p->start[p->design->dy]);
+}
+void printNan(pars *p){
+  ksprintf(&p->bufstr,"%f\t",NAN);
+  for(int i=0;i<p->design->dy;i++)
+    ksprintf(&p->tmpstr,"%f\t",NAN);
+  ksprintf(&p->tmpstr,"%f:",NAN);
+}
 
-  
+void asamEM(pars *p){
+
+
+  int maf0=1;
+  int maf1=1;
+  if(p->mafs[0]>0.995||p->mafs[0]<0.005)
+    maf0=0;
+  if(p->mafs[1]>0.995||p->mafs[1]<0.005)
+    maf1=0;
+
+  //////////// do M1 ///////////////
+  mkDesign(p);
+  p_sCg(p);
+  if(maf0 && maf1){
+    controlEM(p);
+    printRes(p); 
+  }
+  else
+    printNan(p);
+
+  //////////// do M2 ///////////////
   //remove column2 and second value from start M2
   mkDesign(p);
   p_sCg(p);
   memcpy(p->start,p->start0,sizeof(double)*(p->design->dy+1));
   rmPos(p->start,1,p->covs->dy+3);
   rmCol(p->design,1);
-
-  controlEM(p);
-  //print res to kbuf
-  ksprintf(&p->bufstr,"%f\t",logLikeP(p));
-  for(int i=0;i<p->design->dy;i++)
-    ksprintf(&p->tmpstr,"%f\t",p->start[i]);
-  ksprintf(&p->tmpstr,"%f:",p->start[p->design->dy]);
-
+  if(maf0){
+    controlEM(p);
+    printRes(p); 
+  }
+  else
+    printNan(p);
+  //////////// do M3 ///////////////
   //remove column1 and first value from start M3
   mkDesign(p);
   p_sCg(p);
@@ -460,14 +479,14 @@ void asamEM(pars *p){
   rmPos(p->start,0,p->covs->dy+3);
   rmCol(p->design,0);
 
-  controlEM(p);
-  //print res to kbuf
-  ksprintf(&p->bufstr,"%f\t",logLikeP(p));
-  for(int i=0;i<p->design->dy;i++)
-    ksprintf(&p->tmpstr,"%f\t",p->start[i]);
-  ksprintf(&p->tmpstr,"%f:",p->start[p->design->dy]);
+  if(maf1){
+    controlEM(p);
+    printRes(p); 
+  }
+  else
+    printNan(p);
   
-
+  //////////// do M4 ///////////////
   //cbind gs and covs into design M4:
   for(int i=0;i<p->covs->dx;i++){
     p->design->d[i][0] = p->gs[i];
@@ -491,10 +510,9 @@ void asamEM(pars *p){
   p->start[0]=p->start[1];
 
  //print to kbuf
-  ksprintf(&p->bufstr,"%f\t",logLikeP(p));
-  for(int i=0;i<p->design->dy;i++)
-    ksprintf(&p->tmpstr,"%f\t",p->start[i]);
-  ksprintf(&p->tmpstr,"%f:",p->start[p->design->dy]);
+  printRes(p); 
+
+  //////////// do M5 ///////////////
 
   //cpy covs to design M5
   for(int i=0;i<p->covs->dx;i++){
@@ -517,11 +535,7 @@ void asamEM(pars *p){
     p->start[i] = p->start[i-2];
   p->start[1]=  p->start[0]=0;
 
- //print res to kbuf
-  ksprintf(&p->bufstr,"%f",logLikeP(p));
-  for(int i=0;i<p->design->dy;i++)
-    ksprintf(&p->tmpstr,"%f\t",p->start[i]);
-  ksprintf(&p->tmpstr,"%f",p->start[p->design->dy]);
+  printRes(p); 
 
   
   //  fprintf(stdout,"%s:%s\n",p->bufstr.s,p->tmpstr.s);  
