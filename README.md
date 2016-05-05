@@ -3,6 +3,8 @@
 Article
 http://biorxiv.org/content/early/2015/01/22/014001
 
+The implementation is still a work in progress. More features will be added at some point
+
 # Install
 git clone https://github.com/angsd/asaMap.git;
 
@@ -52,7 +54,7 @@ A file with each individuals phenotypes on each line. e.g.
 ### extra covariates (in addition to the intersept and genotypes)
 A file where each column is a covariate and each row is an individual
 ```
-head cov
+>head cov
 0.0127096117618385 -0.0181281029917176 -0.0616739439849275 -0.0304606694443973
 0.0109944672768584 -0.0205785925514037 -0.0547523583405743 -0.0208813157640705
 0.0128395346453956 -0.0142116856067135 -0.0471689997039534 -0.0266186436009881
@@ -64,4 +66,34 @@ head cov
 0.0194100156955457 -0.0371103372950621 0.00813012568415838 -0.015311879434991
 0.0190516629849255 -0.0194012185542486 -0.0413589828106922 -0.0292318169458017
 ```
+###admixture proportions
+Right now the implementation is just for two populations and the admixture porportions is a file with a column consisting or the admixture proportions for population 1. 
+```
+>head Q
+0.398834
+0.491314
+0.399352
+0.634947
+0.000010
+0.467470
+0.497885
+0.800272
+0.999990
+0.032108
+```
 
+### ancestral allele frequencies
+A files where each column is a population and each row is a SNP. 
+```
+>head P
+0.907268 0.903723
+0.498913 0.543486
+0.865254 0.819332
+0.737799 0.738876
+0.812931 0.823395
+0.783896 0.785741
+0.711677 0.865518
+0.592533 0.587921
+0.834116 0.850966
+0.837011 0.852711
+```
