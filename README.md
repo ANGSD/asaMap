@@ -64,13 +64,13 @@ pval(res$llh.M1.,res$llh.M4.,df=1)
 
 ###models
 
-| model | parameters | notes |
-| --- | --- | --- |
-| M1 |(\beta_1,\beta_2)\in R^2  | population specific effects |
-| M2 | \beta_1=0,\beta_2\in R | no effect in population  |
-| M3 | \beta_1\in R, \beta_2=0 | no effect in population 2 |
-| M4 |\beta_1=\beta_2\in R | same effect in both populations |
-| M5 | \beta_1=\beta_2=0 | no effect in any population |
+| model | parameters | notes | #effect Parameters |
+| --- | --- | --- | --- |
+| M1 |(\beta_1,\beta_2)\in R^2  | population specific effects | 2 |
+| M2 | \beta_1=0,\beta_2\in R | no effect in population  | 1 | 
+| M3 | \beta_1\in R, \beta_2=0 | no effect in population 2 | 1 |
+| M4 |\beta_1=\beta_2\in R | same effect in both populations | 1 |
+| M5 | \beta_1=\beta_2=0 | no effect in any population | 0 |
 
 
 #Input files
