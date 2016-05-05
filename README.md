@@ -32,6 +32,24 @@ make
 ```
 All files must be specified: -p -c -y -a -f -o
 
+#Run example using ADMIXTURE 
+
+```
+PH=pheno.files
+COV=cov.file
+PF=plinkFile #without postfix e.g. no .bim / .fam / .bed
+#run admixture
+admixture $PF.bed 2
+
+#get admixture proportions for population 1
+cut -f1 -d" " $PF.2.Q > Q
+
+#run asaMap
+../asaMap -p $PF -o out -c $COV -y $PH -a Q -f $PF.2.P
+```
+
+
+
 #Input files
 ###Genotypes
 plink binary (.bim .bam .fam)
