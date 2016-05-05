@@ -3,7 +3,13 @@
 Article
 http://biorxiv.org/content/early/2015/01/22/014001
 
-The implementation is still a work in progress. More features will be added at some point
+The implementation is still a work in progress. More features will be added at some point:
+- logistic regression, Poisson regression
+- larger number of populations (crazy high number of paraters - so maybe not the best idea)
+- recessive model
+- SE for beta
+- Threading
+
 
 # Install
 git clone https://github.com/angsd/asaMap.git;
