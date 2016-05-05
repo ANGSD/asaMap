@@ -13,6 +13,7 @@ cd asaMap
 make
 #Options
 ```
+Options:
    -p '(null)'		plink prefix filename
    -o '(null)'		output filename
    -c '(null)'		covariance matrix filename
@@ -21,14 +22,16 @@ make
    -f '(null)'		allele frequencies
 
  optional arguments:
-   -m '0'		model 0=add 1=rec
+   -m '0'		model 0=add 1=rec (not implemented yet)
    -b '(null)'		file containing the start
    -i '10'		max number of iterations
    -0 '0'		full 1:M1,2:M2,3:M3
    -1 '0'		null 1:M1,2:M2,3:M3, 4:M4 5:M5
    -r '100'		random seed
    -t '1.000000e-08'	float for breaking EM update
-   -P '1'		number of threads
+   -P '1'		number of threads  (not implemented yet) 
+
+All files must be specified: -p -c -y -a -f -o
 ```
 All files must be specified: -p -c -y -a -f -o
 
