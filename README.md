@@ -52,7 +52,14 @@ cut -f1 -d" " $PF.2.Q > Q
 Easy to optain in R
 
 ```
+res <- read.table("out",head=T)
+pval <- function(a,b,df)
+  1- pchisq(-2*(a-b),df=df)
+#pvalues for M1 vs. M5
+pval(res$llh.M1.,res$llh.M5.,df=2)
 
+#pvalues for M1 vs. M4
+pval(res$llh.M1.,res$llh.M4.,df=1)
 ```
 
 ###models
